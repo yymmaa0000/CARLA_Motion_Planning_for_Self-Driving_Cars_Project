@@ -93,6 +93,15 @@ class LocalPlanner:
         # else: ...
         # ...
         # heading = ...
+        if goal_index < len(waypoints)-1:
+            delta_x = waypoints[goal_index+1][0] - waypoints[goal_index][0]
+            delta_y = waypoints[goal_index+1][1] - waypoints[goal_index][1]
+        else: 
+            delta_x = waypoints[goal_index][0] - waypoints[goal_index-1][0]
+            delta_y = waypoints[goal_index][1] - waypoints[goal_index-1][1]
+        heading = np.arctan2(delta_y,delta_x)
+
+
         # ------------------------------------------------------------------
 
         # Compute the center goal state in the local frame using 
@@ -107,6 +116,8 @@ class LocalPlanner:
         # ------------------------------------------------------------------
         # goal_state_local[0] -= ... 
         # goal_state_local[1] -= ... 
+        goal_state_local[0] -= ego_state[0] 
+        goal_state_local[1] -= ego_state[1] 
         # ------------------------------------------------------------------
 
         # Rotate such that the ego state has zero heading in the new frame.
@@ -118,6 +129,9 @@ class LocalPlanner:
         # ------------------------------------------------------------------
         # goal_x = ...
         # goal_y = ...
+        theta = -ego_state[2]
+        goal_x = goal_state_local[0] * cos(theta) - goal_state_local[1] * sin(theta)
+        goal_y = goal_state_local[0] * sin(theta) + goal_state_local[1] * cos(theta)
         # ------------------------------------------------------------------
 
         # Compute the goal yaw in the local frame by subtracting off the 
@@ -125,6 +139,7 @@ class LocalPlanner:
         # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
         # goal_t = ...
+        goal_t = heading - theta
         # ------------------------------------------------------------------
 
         # Velocity is preserved after the transformation.
@@ -153,6 +168,8 @@ class LocalPlanner:
             # ------------------------------------------------------------------
             # x_offset = ...
             # y_offset = ...
+            x_offset = offset * cos(theta + pi/2)
+            y_offset = offset * sin(theta + pi/2)
             # ------------------------------------------------------------------
 
             goal_state_set.append([goal_x + x_offset, 
