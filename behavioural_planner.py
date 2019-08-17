@@ -98,6 +98,7 @@ class BehaviouralPlanner:
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             # closest_len, closest_index = ...
+            closest_len, closest_index = get_closest_index(waypoints, ego_state)
             # ------------------------------------------------------------------
 
             # Next, find the goal index that lies within the lookahead distance
@@ -105,6 +106,7 @@ class BehaviouralPlanner:
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             # goal_index = ...
+            goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
             # ------------------------------------------------------------------
 
             # Finally, check the index set between closest_index and goal_index
@@ -114,6 +116,9 @@ class BehaviouralPlanner:
             # goal_index, stop_sign_found = ...
             # self._goal_index = ...
             # self._goal_state = ...
+            goal_index, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index)
+            self._goal_index = goal_index
+            self._goal_state = waypoints[goal_index]
             # ------------------------------------------------------------------
 
             # If stop sign found, set the goal to zero speed, then transition to 
@@ -122,9 +127,12 @@ class BehaviouralPlanner:
             # ------------------------------------------------------------------
             # if stop_sign_found:
             #   ...
+            if stop_sign_found: 
+                self._goal_state[2] = 0
+                self._state = DECELERATE_TO_STOP
             # ------------------------------------------------------------------
 
-            pass
+            #pass
 
         # In this state, check if we have reached a complete stop. Use the
         # closed loop speed to do so, to ensure we are actually at a complete
@@ -134,9 +142,12 @@ class BehaviouralPlanner:
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             # ...
+            if abs(closed_loop_speed) <= STOP_THRESHOLD:
+                self._state = STAY_STOPPED
+                self._stop_count = 0
             # ------------------------------------------------------------------
 
-            pass
+            #pass
 
         # In this state, check to see if we have stayed stopped for at
         # least STOP_COUNTS number of cycles. If so, we can now leave
@@ -152,6 +163,8 @@ class BehaviouralPlanner:
                 # --------------------------------------------------------------
                 # closest_len, closest_index = ...
                 # goal_index = ...
+                closest_len, closest_index = get_closest_index(waypoints, ego_state)
+                goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
                 # --------------------------------------------------------------
 
                 # We've stopped for the required amount of time, so the new goal 
@@ -162,6 +175,9 @@ class BehaviouralPlanner:
                 # stop_sign_found = ...
                 # self._goal_index = ... 
                 # self._goal_state = ... 
+                _, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index)
+                self._goal_index = goal_index
+                self._goal_state = waypoints[goal_index]
                 # --------------------------------------------------------------
 
                 # If the stop sign is no longer along our path, we can now
@@ -170,18 +186,20 @@ class BehaviouralPlanner:
                 # --------------------------------------------------------------
                 # if not stop_sign_found:
                 #   ...
+                if not stop_sign_found: self._state = FOLLOW_LANE
                 # --------------------------------------------------------------
 
-                pass
+                #pass
 
             # Otherwise, continue counting.
             else:
                 # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
                 # ...
+                self._stop_count += 1
                 # --------------------------------------------------------------
 
-                pass
+                #pass
         else:
             raise ValueError('Invalid state value.')
 
@@ -250,6 +268,10 @@ class BehaviouralPlanner:
         # ------------------------------------------------------------------
         # while wp_index < len(waypoints) - 1:
         #   arc_length += ...
+        while wp_index < len(waypoints) - 1:
+            arc_length += np.sqrt((waypoints[wp_index][0] - waypoints[wp_index+1][0])**2 + (waypoints[wp_index][1] - waypoints[wp_index+1][1])**2)
+            if arc_length > self._lookahead: break
+            wp_index += 1
         # ------------------------------------------------------------------
 
         return wp_index
@@ -437,6 +459,12 @@ def get_closest_index(waypoints, ego_state):
     # ------------------------------------------------------------------
     # for i in range(len(waypoints)):
     #   ...
+    for i in range(len(waypoints)):
+        temp = (waypoints[i][0] - ego_state[0])**2 + (waypoints[i][1] - ego_state[1])**2
+        if temp < closest_len:
+            closest_len = temp
+            closest_index = i
+    closest_len = np.sqrt(closest_len)
     # ------------------------------------------------------------------
 
     return closest_len, closest_index
