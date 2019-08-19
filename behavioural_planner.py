@@ -23,6 +23,7 @@ class BehaviouralPlanner:
     def __init__(self, lookahead, stopsign_fences, lead_vehicle_lookahead):
         self._lookahead                     = lookahead
         self._stopsign_fences               = stopsign_fences
+        self._stopsign_visited              = [False]*len(self._stopsign_fences)
         self._follow_lead_vehicle_lookahead = lead_vehicle_lookahead
         self._state                         = FOLLOW_LANE
         self._follow_lead_vehicle           = False
@@ -108,6 +109,7 @@ class BehaviouralPlanner:
             # ------------------------------------------------------------------
             # goal_index = ...
             goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+            while waypoints[goal_index][2] <= 0.1: goal_index += 1
             # ------------------------------------------------------------------
 
             # Finally, check the index set between closest_index and goal_index
@@ -168,6 +170,7 @@ class BehaviouralPlanner:
                 # goal_index = ...
                 closest_len, closest_index = get_closest_index(waypoints, ego_state)
                 goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+                while waypoints[goal_index][2] <= 0.1: goal_index += 1
                 # --------------------------------------------------------------
 
                 # We've stopped for the required amount of time, so the new goal 
@@ -178,14 +181,16 @@ class BehaviouralPlanner:
                 # stop_sign_found = ...
                 # self._goal_index = ... 
                 # self._goal_state = ... 
-                _, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index)
-                while waypoints[goal_index][2] <= 0: goal_index += 1
+                
+                #_, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index)
+                
                 self._goal_index = goal_index
                 self._goal_state = waypoints[goal_index]
                 # print("=zzzzzzzzzzzzzzzzzzzzzzzzzzzzz=")
                 # print(self._goal_index,self._goal_state)
                 # print(waypoints)
                 # print("=zzzzzzzzzzzzzzzzzzzzzzzzzzzzz=")
+
                 # --------------------------------------------------------------
 
                 # If the stop sign is no longer along our path, we can now
@@ -195,7 +200,10 @@ class BehaviouralPlanner:
                 # if not stop_sign_found:
                 #   ...
                 
-                if not stop_sign_found: self._state = FOLLOW_LANE
+                #if not stop_sign_found: self._state = FOLLOW_LANE
+
+                self._state = FOLLOW_LANE
+                self._stop_count = 0
                 
                 # --------------------------------------------------------------
 
@@ -323,7 +331,9 @@ class BehaviouralPlanner:
         for i in range(closest_index, goal_index):
             # Check to see if path segment crosses any of the stop lines.
             intersect_flag = False
-            for stopsign_fence in self._stopsign_fences:
+            for key,stopsign_fence in enumerate(self._stopsign_fences):
+                if self._stopsign_visited[key]: continue
+
                 wp_1   = np.array(waypoints[i][0:2])
                 wp_2   = np.array(waypoints[i+1][0:2])
                 s_1    = np.array(stopsign_fence[0:2])
@@ -359,6 +369,7 @@ class BehaviouralPlanner:
                 # the goal state to stop before the goal line.
                 if intersect_flag:
                     goal_index = i
+                    self._stopsign_visited[key] = True
                     return goal_index, True
 
         return goal_index, False
