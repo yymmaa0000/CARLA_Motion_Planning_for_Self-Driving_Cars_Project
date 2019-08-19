@@ -76,6 +76,7 @@ class PathOptimizer:
         # ------------------------------------------------------------------
         # bounds = ...
         bounds = ((-0.5, 0.5),(-0.5, 0.5),(sf_0, None))
+        #bounds = ((-2, 2),(-2, 2),(sf_0, None))
         # ------------------------------------------------------------------
 
         # Here we will call scipy.optimize.minimize to optimize our spiral.

@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-XingYu Wang
-Personal project - Self-Driving Vehicle Control
-Jul 24, 2019
-"""
 
 """
 2D Controller Class to be used for the CARLA waypoint follower demo.
@@ -14,22 +9,23 @@ import numpy as np
 
 class Controller2D(object):
     def __init__(self, waypoints):
-        self.vars                = cutils.CUtils()
-        self._current_x          = 0
-        self._current_y          = 0
-        self._current_yaw        = 0
-        self._current_speed      = 0
-        self._desired_speed      = 0
-        self._current_frame      = 0
-        self._current_timestamp  = 0
-        self._start_control_loop = False
-        self._set_throttle       = 0
-        self._set_brake          = 0
-        self._set_steer          = 0
-        self._waypoints          = waypoints
-        self._conv_rad_to_steer  = 180.0 / 70.0 / np.pi
-        self._pi                 = np.pi
-        self._2pi                = 2.0 * np.pi
+        self.vars                   = cutils.CUtils()
+        self._lookahead_distance    = 2.0
+        self._current_x             = 0
+        self._current_y             = 0
+        self._current_yaw           = 0
+        self._current_speed         = 0
+        self._desired_speed         = 0
+        self._current_frame         = 0
+        self._current_timestamp     = 0
+        self._start_control_loop    = False
+        self._set_throttle          = 0
+        self._set_brake             = 0
+        self._set_steer             = 0
+        self._waypoints             = waypoints
+        self._conv_rad_to_steer     = 180.0 / 70.0 / np.pi
+        self._pi                    = np.pi
+        self._2pi                   = 2.0 * np.pi
 
     def update_values(self, x, y, yaw, speed, timestamp, frame):
         self._current_x         = x
@@ -40,6 +36,28 @@ class Controller2D(object):
         self._current_frame     = frame
         if self._current_frame:
             self._start_control_loop = True
+
+    def get_lookahead_index(self, lookahead_distance):
+        min_idx       = 0
+        min_dist      = float("inf")
+        for i in range(len(self._waypoints)):
+            dist = np.linalg.norm(np.array([
+                    self._waypoints[i][0] - self._current_x,
+                    self._waypoints[i][1] - self._current_y]))
+            if dist < min_dist:
+                min_dist = dist
+                min_idx = i
+
+        total_dist = min_dist
+        lookahead_idx = min_idx
+        for i in range(min_idx + 1, len(self._waypoints)):
+            if total_dist >= lookahead_distance:
+                break
+            total_dist += np.linalg.norm(np.array([
+                    self._waypoints[i][0] - self._waypoints[i-1][0],
+                    self._waypoints[i][1] - self._waypoints[i-1][1]]))
+            lookahead_idx = i
+        return lookahead_idx
 
     def update_desired_speed(self):
         min_idx       = 0
@@ -52,11 +70,7 @@ class Controller2D(object):
             if dist < min_dist:
                 min_dist = dist
                 min_idx = i
-        if min_idx < len(self._waypoints)-1:
-            desired_speed = self._waypoints[min_idx][2]
-        else:
-            desired_speed = self._waypoints[-1][2]
-        self._desired_speed = desired_speed
+        self._desired_speed = self._waypoints[min_idx][2]
 
     def update_waypoints(self, new_waypoints):
         self._waypoints = new_waypoints
@@ -98,140 +112,94 @@ class Controller2D(object):
         steer_output    = 0
         brake_output    = 0
 
-        ######################################################
-        ######################################################
-        # MODULE 7: DECLARE USAGE VARIABLES HERE
-        ######################################################
-        ######################################################
-        """
-            Use 'self.vars.create_var(<variable name>, <default value>)'
-            to create a persistent variable (not destroyed at each iteration).
-            This means that the value can be stored for use in the next
-            iteration of the control loop.
-
-            Example: Creation of 'v_previous', default value to be 0
-            self.vars.create_var('v_previous', 0.0)
-
-            Example: Setting 'v_previous' to be 1.0
-            self.vars.v_previous = 1.0
-
-            Example: Accessing the value from 'v_previous' to be used
-            throttle_output = 0.5 * self.vars.v_previous
-        """
-        self.vars.create_var('v_previous', 0.0)
-        self.vars.create_var('t_previous', 0.0)
+        self.vars.create_var('kp', 0.50)
+        self.vars.create_var('ki', 0.30)
+        self.vars.create_var('integrator_min', 0.0)
+        self.vars.create_var('integrator_max', 10.0)
+        self.vars.create_var('kd', 0.13)
+        self.vars.create_var('kp_heading', 8.00)
+        self.vars.create_var('k_speed_crosstrack', 0.00)
+        self.vars.create_var('cross_track_deadband', 0.01)
+        self.vars.create_var('x_prev', 0.0)
+        self.vars.create_var('y_prev', 0.0)
+        self.vars.create_var('yaw_prev', 0.0)
+        self.vars.create_var('v_prev', 0.0)
+        self.vars.create_var('t_prev', 0.0)
+        self.vars.create_var('v_error', 0.0)
+        self.vars.create_var('v_error_prev', 0.0)
         self.vars.create_var('v_error_integral', 0.0)
-
+        
         # Skip the first frame to store previous values properly
         if self._start_control_loop:
-            """
-                Controller iteration code block.
 
-                Controller Feedback Variables:
-                    x               : Current X position (meters)
-                    y               : Current Y position (meters)
-                    yaw             : Current yaw pose (radians)
-                    v               : Current forward speed (meters per second)
-                    t               : Current time (seconds)
-                    v_desired       : Current desired speed (meters per second)
-                                      (Computed as the speed to track at the
-                                      closest waypoint to the vehicle.)
-                    waypoints       : Current waypoints to track
-                                      (Includes speed to track at each x,y
-                                      location.)
-                                      Format: [[x0, y0, v0],
-                                               [x1, y1, v1],
-                                               ...
-                                               [xn, yn, vn]]
-                                      Example:
-                                          waypoints[2][1]: 
-                                          Returns the 3rd waypoint's y position
+            self.vars.v_error           = v_desired - v
+            self.vars.v_error_integral += self.vars.v_error * \
+                                          (t - self.vars.t_prev)
+            v_error_rate_of_change      = (self.vars.v_error - self.vars.v_error_prev) /\
+                                          (t - self.vars.t_prev)
 
-                                          waypoints[5]:
-                                          Returns [x5, y5, v5] (6th waypoint)
-                
-                Controller Output Variables:
-                    throttle_output : Throttle output (0 to 1)
-                    steer_output    : Steer output (-1.22 rad to 1.22 rad)
-                    brake_output    : Brake output (0 to 1)
-            """
+            # cap the integrator sum to a min/max
+            self.vars.v_error_integral = \
+                    np.fmax(np.fmin(self.vars.v_error_integral, 
+                                    self.vars.integrator_max), 
+                            self.vars.integrator_min)
 
-            ######################################################
-            ######################################################
-            # MODULE 7: IMPLEMENTATION OF LONGITUDINAL CONTROLLER HERE
-            ######################################################
-            ######################################################
-            """
-                Implement a longitudinal controller here. Remember that you can
-                access the persistent variables declared above here. For
-                example, can treat self.vars.v_previous like a "global variable".
-            """
+            throttle_output = self.vars.kp * self.vars.v_error +\
+                              self.vars.ki * self.vars.v_error_integral +\
+                              self.vars.kd * v_error_rate_of_change
 
-            # in this controller, we assume no braking, so brake_output is always 0
-            # We use PID + feedforward method for longitudinal controller
-            # the dynamic model is not used here, just pure tuning of the gains
-            kp = 0.2
-            ki = 0.05
-            kd = 0.01
+            # Find cross track error (assume point with closest distance)
+            crosstrack_error = float("inf")
+            crosstrack_vector = np.array([float("inf"), float("inf")])
 
-            v_error = v_desired - v
+            ce_idx = self.get_lookahead_index(self._lookahead_distance)
+            crosstrack_vector = np.array([waypoints[ce_idx][0] - \
+                                         x - self._lookahead_distance*np.cos(yaw), 
+                                          waypoints[ce_idx][1] - \
+                                         y - self._lookahead_distance*np.sin(yaw)])
+            crosstrack_error = np.linalg.norm(crosstrack_vector)
 
-            dt = t - self.vars.t_previous
-            v_error_derivative = v_error/dt
+            # set deadband to reduce oscillations
+            print(crosstrack_error)
+            if crosstrack_error < self.vars.cross_track_deadband:
+                crosstrack_error = 0.0
 
-            self.vars.v_error_integral += v_error * dt
+            # Compute the sign of the crosstrack error
+            crosstrack_heading = np.arctan2(crosstrack_vector[1], 
+                                            crosstrack_vector[0])
+            crosstrack_heading_error = crosstrack_heading - yaw
+            crosstrack_heading_error = \
+                    (crosstrack_heading_error + self._pi) % \
+                    self._2pi - self._pi
 
-            feedback = kp * v_error + ki * self.vars.v_error_integral + kd * v_error_derivative
-
-            # calculate the feedforward(predicted) throttle, the data is collect by
-            # running CARLA simulation at diffferent throttle level and measuring car speed
-            look_ahead = waypoints[len(waypoints)-1]
-            v_desired_forward = look_ahead[2]
-            if v_desired_forward <= 6:
-            	feedforward = 0.15 + v_desired_forward/6*(0.6-0.15)
-            elif v_desired <= 11.5:
-            	feedforward = 0.6 + (v_desired_forward-6)/(11.5-6)*(0.8-0.6)
+            crosstrack_sign = np.sign(crosstrack_heading_error)
+    
+            # Compute heading relative to trajectory (heading error)
+            # First ensure that we are not at the last index. If we are,
+            # flip back to the first index (loop the waypoints)
+            if ce_idx < len(waypoints)-1:
+                vect_wp0_to_wp1 = np.array(
+                        [waypoints[ce_idx+1][0] - waypoints[ce_idx][0],
+                         waypoints[ce_idx+1][1] - waypoints[ce_idx][1]])
+                trajectory_heading = np.arctan2(vect_wp0_to_wp1[1], 
+                                                vect_wp0_to_wp1[0])
             else:
-            	feedforward = 0.8 + (v_desired_forward-11.5)/85
-            
-            throttle_output = feedforward + feedback
-            throttle_output = min(throttle_output,1)
-            throttle_output = max(throttle_output,0)
+                vect_wp0_to_wp1 = np.array(
+                        [waypoints[0][0] - waypoints[-1][0],
+                         waypoints[0][1] - waypoints[-1][1]])
+                trajectory_heading = np.arctan2(vect_wp0_to_wp1[1], 
+                                                vect_wp0_to_wp1[0])
 
-            # Change these outputs with the longitudinal controller. Note that
-            # brake_output is optional and is not required to pass the
-            # assignment, as the car will naturally slow down over time.
-            brake_output    = 0
+            heading_error = trajectory_heading - yaw
+            heading_error = \
+                    (heading_error + self._pi) % self._2pi - self._pi
 
-            ######################################################
-            ######################################################
-            # MODULE 7: IMPLEMENTATION OF LATERAL CONTROLLER HERE
-            ######################################################
-            ######################################################
-            """
-                Implement a lateral controller here. Remember that you can
-                access the persistent variables declared above here. For
-                example, can treat self.vars.v_previous like a "global variable".
-            """
-
-            # in this controller, we use pure pursuit method to design lateral controller
-            # the dynamic model is not used here, just pure tuning of the gains.
-
-            L = 1.5
-            # use the middle point in the given waypoints as the look ahead target
-            look_ahead = waypoints[len(waypoints)//2]
-
-            ld = np.sqrt((look_ahead[0] - x)**2 + (look_ahead[1] - y)**2)
-
-            vector_look_ahead = [look_ahead[0] - x,look_ahead[1] - y]
-            vector_car = [np.cos(yaw),np.sin(yaw)]
-            corss_track_error = np.cross(vector_look_ahead, vector_car)
-
-            curvature = 2/ld/ld*corss_track_error
-            
-            # Change the steer output with the lateral controller. 
-            steer_output = np.arctan(curvature*L)
-            steer_output = -steer_output
+            # Compute steering command based on error
+            steer_output = heading_error + \
+                    np.arctan(self.vars.kp_heading * \
+                              crosstrack_sign * \
+                              crosstrack_error / \
+                              (v + self.vars.k_speed_crosstrack))
 
             ######################################################
             # SET CONTROLS OUTPUT
@@ -239,17 +207,11 @@ class Controller2D(object):
             self.set_throttle(throttle_output)  # in percent (0 to 1)
             self.set_steer(steer_output)        # in rad (-1.22 to 1.22)
             self.set_brake(brake_output)        # in percent (0 to 1)
-            #print(throttle_output,steer_output)
 
-        ######################################################
-        ######################################################
-        # MODULE 7: STORE OLD VALUES HERE (ADD MORE IF NECESSARY)
-        ######################################################
-        ######################################################
-        """
-            Use this block to store old values (for example, we can store the
-            current x, y, and yaw values here using persistent variables for use
-            in the next iteration)
-        """
-        self.vars.v_previous = v  # Store forward speed to be used in next step
-        self.vars.t_previous = t  # Store forward speed to be used in next step
+        self.vars.x_prev       = x
+        self.vars.y_prev       = y
+        self.vars.yaw_prev     = yaw
+        self.vars.v_prev       = v
+        self.vars.v_error_prev = self.vars.v_error
+        self.vars.t_prev       = t
+        

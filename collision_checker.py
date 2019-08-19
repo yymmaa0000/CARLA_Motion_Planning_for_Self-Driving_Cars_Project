@@ -182,8 +182,9 @@ class CollisionChecker:
                             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                             # --------------------------------------------------
                             # score += self._weight * ...
-                            #score += self._weight * np.sqrt((paths[i][0][-1]-paths[j][0][-1])**2+(paths[i][1][-1]-paths[j][1][-1])**2) * -1
+                            # score += self._weight * np.sqrt((paths[i][0][-1]-paths[j][0][-1])**2+(paths[i][1][-1]-paths[j][1][-1])**2) * -1
                             # --------------------------------------------------
+                            
                             pass
 
             # Handle the case of colliding paths.
