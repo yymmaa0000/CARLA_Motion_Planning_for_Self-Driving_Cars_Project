@@ -184,8 +184,8 @@ class PathOptimizer:
         # y_points = ...
         # return [x_points, y_points, t_points]
         t_points = self.thetaf(a, b, c, d, s_points)
-        x_points = scipy.integrate.cumtrapz(cos(t_points),s_points)
-        y_points = scipy.integrate.cumtrapz(sin(t_points),s_points)
+        x_points = scipy.integrate.cumtrapz(np.cos(t_points),s_points)
+        y_points = scipy.integrate.cumtrapz(np.sin(t_points),s_points)
         return [x_points.tolist(), y_points.tolist(), t_points.tolist()]
         # ------------------------------------------------------------------
 

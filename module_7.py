@@ -766,6 +766,7 @@ def exec_waypoint_nav_demo(args):
                 lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
                 decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
                 local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state, bp._follow_lead_vehicle)
+                print(local_waypoints[0])
                 # --------------------------------------------------------------
 
                 if local_waypoints != None:

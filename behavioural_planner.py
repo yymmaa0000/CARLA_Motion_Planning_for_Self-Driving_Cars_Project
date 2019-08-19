@@ -94,6 +94,7 @@ class BehaviouralPlanner:
         # complete, and examine the check_for_stop_signs() function to
         # understand it.
         if self._state == FOLLOW_LANE:
+            #print("FOLLOW_LANE")
             # First, find the closest index to the ego vehicle.
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
@@ -139,6 +140,7 @@ class BehaviouralPlanner:
         # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
         # state.
         elif self._state == DECELERATE_TO_STOP:
+            #print("DECELERATE_TO_STOP")
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             # ...
@@ -153,6 +155,7 @@ class BehaviouralPlanner:
         # least STOP_COUNTS number of cycles. If so, we can now leave
         # the stop sign and transition to the next state.
         elif self._state == STAY_STOPPED:
+            #print("STAY_STOPPED")
             # We have stayed stopped for the required number of cycles.
             # Allow the ego vehicle to leave the stop sign. Once it has
             # passed the stop sign, return to lane following.
@@ -176,8 +179,13 @@ class BehaviouralPlanner:
                 # self._goal_index = ... 
                 # self._goal_state = ... 
                 _, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index)
+                while waypoints[goal_index][2] <= 0: goal_index += 1
                 self._goal_index = goal_index
                 self._goal_state = waypoints[goal_index]
+                # print("=zzzzzzzzzzzzzzzzzzzzzzzzzzzzz=")
+                # print(self._goal_index,self._goal_state)
+                # print(waypoints)
+                # print("=zzzzzzzzzzzzzzzzzzzzzzzzzzzzz=")
                 # --------------------------------------------------------------
 
                 # If the stop sign is no longer along our path, we can now
@@ -186,7 +194,9 @@ class BehaviouralPlanner:
                 # --------------------------------------------------------------
                 # if not stop_sign_found:
                 #   ...
+                
                 if not stop_sign_found: self._state = FOLLOW_LANE
+                
                 # --------------------------------------------------------------
 
                 #pass
