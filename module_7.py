@@ -4,6 +4,12 @@
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
 """
+Modified by: XingYu Wang
+Personal project - Motion Planning for Self-Driving Cars
+Aug 22, 2019
+"""
+
+"""
 CARLA waypoint follower assessment client script.
 
 A controller assessment to follow a given trajectory, where the trajectory

@@ -3,6 +3,12 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
+"""
+Modified by: XingYu Wang
+Personal project - Motion Planning for Self-Driving Cars
+Aug 22, 2019
+"""
+
 # Author: Ryan De Iaco
 # Additional Comments: Carlos Wang
 # Date: October 29, 2018
