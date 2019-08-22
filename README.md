@@ -20,3 +20,14 @@ The screen recording of the simulation for an autonomous driving scenario in a s
 ### Trajectory of the car driving through a small town road: ###
 
 ![alt text](https://github.com/yymmaa0000/CARLA_Motion_Planning_for_Self-Driving_Cars_Project/blob/master/controller_output/trajectory.png)
+
+### Implementation detail: ###
+Behaviour Planning Logic: use state machine that transitions between lane following, deceleration to the stop sign, staying stopped, and back to lane following, when it encounters a stop sign.
+
+Path Generation: use path optimization to compute a cubit spiral for each given goal point to ensure confortable and efficient path. The goal points are sampled by laterally offsetting from the goal location along the direction perpendicular to the goal yaw of the ego vehicle
+
+Static Collision Checking: circle-based collision checking
+
+Path Selection: eliminate paths that are in collision with static obstacles, and select path according to how closely it follows the lane centerline, and how far away it is from other paths that are in collision
+
+Velocity Profile Generation: generate a linear ramp and trapezoidal velocity profiles that can handle stop signs, lead dynamic obstacles, as well as nominal lane maintenance， while integrating comfort constaints 
