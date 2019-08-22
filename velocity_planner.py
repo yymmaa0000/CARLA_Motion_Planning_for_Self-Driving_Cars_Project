@@ -399,7 +399,7 @@ class VelocityPlanner:
 
     # Computes a profile for nominal speed tracking.
     def nominal_profile(self, path, start_speed, desired_speed):
-        print("normal:", desired_speed)
+        #print("normal:", desired_speed)
         """Computes the velocity profile for the local planner path in a normal
         speed tracking case.
         
